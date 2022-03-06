@@ -1,0 +1,6 @@
+NCTU: A102550
+NTHU: 107061126
+
+Name: Andrew Hsu 許晏誠
+
+HW1 GitHub url: https://github.com/Andreew9504089/2022-Aerial-Robotics/tree/master/Homework/hw1
