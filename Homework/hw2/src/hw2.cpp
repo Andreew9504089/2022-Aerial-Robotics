@@ -66,13 +66,16 @@ void follower_cb2(const turtlesim::Pose::ConstPtr& msg)
 void leadertoworld2D(geometry_msgs::Point &follower_goal, turtlesim::Pose &leader)
 {
 	/*------------------------------
-	Finish your code here, for example :
+	Finish your code here, for example : */
 
-	float temp_x = follower_goal.x;
-	follower_goal.x = cos(leader.theta) + ......
+	double tmp_x{follower_goal.x};
+	double tmp_y{follower_goal.y};
+
+	follower_goal.x = leader.x + (cos(leader.theta)*tmp_x - sin(leader.theta)*tmp_y);
+	follower_goal.y = leader.y + (sin(leader.theta)*tmp_x + cos(leader.theta)*tmp_y);
 	
 
-	*/
+	/* --------------------------------- */
 } 
 
 
@@ -81,10 +84,14 @@ void leadertoworld2D(geometry_msgs::Point &follower_goal, turtlesim::Pose &leade
 void worldtobody2D(float &x, float &y, float theta)
 {
 	/* --------------------
-	Finish your code here
+	Finish your code here */
+	float tmp_x{x};
+	float tmp_y{y};
 
+	x = cos(theta)*tmp_x + sin(theta)*tmp_y;
+	y = -1*sin(theta)*tmp_x + cos(theta)*tmp_y;
 
-	----------------------*/
+	/* ----------------------*/
 } 
 
 
@@ -106,21 +113,20 @@ void Positioncontrol(geometry_msgs::Point &goal, turtlesim::Pose &follower, geom
 
 	// Output boundary
 	if (error_norm > 2) error_norm = 2;
+	else if (error_norm < 0.01) error_norm = 0, error_theta = 0;
 
-	// Design your controller here, you may use a simple P controller
-	
-	/*--------------------------
+	/*-------------------------- */
+	double Kp_norm{1};
+	double Kp_theta{1};
+
+	vel_msg.linear.x = Kp_norm * error_norm;
+	vel_msg.angular.z = Kp_theta * error_theta;
 
 
-		ex: vel_msg.x = ....
-			vel_msg.theta = ....
 
+	/* -----------------------------*/
 
-
-	-----------------------------*/
 }
-
-
 
 int main(int argc, char **argv)
 {
@@ -175,12 +181,13 @@ int main(int argc, char **argv)
 
 		//Input your goal_point to your controller
 		/* -------------------
-		Finish you code here
+		Finish you code here */
 
+    	Positioncontrol(follower1_goal, follower1, follower1_twist);
+    	Positioncontrol(follower2_goal, follower2, follower2_twist);
+		Positioncontrol(leader_goal, leader, leader_twist);
 
-		
-
-		--------------------*/ 
+		/* --------------------*/ 
 
 		//Input your control input(from Pcontrol) to your plant
     	follower1_pub.publish(follower1_twist);
