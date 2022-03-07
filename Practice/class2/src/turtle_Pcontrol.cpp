@@ -49,9 +49,11 @@ void worldtobody2D(float &x, float &y, float theta)
 {
 	/* --------------------
 	Finish your code here */
+	double tmp_x{x};
+	double tmp_y{y};
 
-	x = cos(theta)*x + sin(theta)*x;
-	y = -1*sin(theta)*y + cos(theta)*y;
+	x = cos(theta)*tmp_x + sin(theta)*tmp_y;
+	y = -1*sin(theta)*tmp_x + cos(theta)*tmp_y;
 
 	/* ----------------------*/
 } 
@@ -79,11 +81,8 @@ void Positioncontrol(geometry_msgs::Point &goal, turtlesim::Pose &turtle_pose, g
 	// Design your controller here, you may use a simple P controller
 	
 	/*-------------------------- */
-	std::cout << "err_norm:" << error_norm << std::endl;
-	std::cout << "err_theta:" << error_theta << std::endl;
-
-	double Kp_norm{0.4};
-	double Kp_theta{0.7};
+	double Kp_norm{1};
+	double Kp_theta{1};
 
 	turtle_vel_msg.linear.x = Kp_norm*error_norm;
 	turtle_vel_msg.angular.z = Kp_theta*error_theta;
