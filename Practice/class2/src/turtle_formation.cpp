@@ -115,7 +115,7 @@ void Positioncontrol(geometry_msgs::Point &goal, turtlesim::Pose &follower, geom
 	// Design your controller here, you may use a simple P controller
 	
 	/*-------------------------- */
-	double Kp_norm{1};
+	double Kp_norm{0.7};
 	double Kp_theta{1};
 
 	vel_msg.linear.x = Kp_norm * error_norm;
