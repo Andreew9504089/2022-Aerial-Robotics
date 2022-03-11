@@ -11,8 +11,6 @@
 
 using namespace std;
 
-float theta_error;
-
 // turtle pose
 turtlesim::Pose leader;
 turtlesim::Pose follower1;
@@ -96,7 +94,7 @@ void worldtobody2D(float &x, float &y, float theta)
 
 
 // P control for goal position in world frame 
-void Positioncontrol(geometry_msgs::Point &goal, turtlesim::Pose &follower, geometry_msgs::Twist &vel_msg) {
+void Positioncontrol(geometry_msgs::Point &goal, turtlesim::Pose &follower, geometry_msgs::Twist &vel_msg, int role) {
 
 	// error in inertia frame
 	pos_err_I.x = goal.x - follower.x;
@@ -112,12 +110,16 @@ void Positioncontrol(geometry_msgs::Point &goal, turtlesim::Pose &follower, geom
 	float error_theta = atan2(pos_err_I.y,pos_err_I.x);
 
 	// Output boundary
-	if (error_norm > 2) error_norm = 2;
-	else if (error_norm < 0.01) error_norm = 0, error_theta = 0;
-
+	if (error_norm > 2 && role == 0) error_norm = 2;
+	else if (error_norm < 0.1)
+	{
+		error_norm = 0;
+		if(role == 1) error_theta = leader.theta - follower.theta;
+		else error_theta = 0;
+	}
 	/*-------------------------- */
-	double Kp_norm{1};
-	double Kp_theta{1};
+	double Kp_norm{0.5};
+	double Kp_theta{0.7};
 
 	vel_msg.linear.x = Kp_norm * error_norm;
 	vel_msg.angular.z = Kp_theta * error_theta;
@@ -145,13 +147,13 @@ int main(int argc, char **argv)
 	follower2_pub = n.advertise<geometry_msgs::Twist>("/turtlesim/follower2/cmd_vel", 1);
 		
 	// define leader goal point
+	int role_flag{0}; // 0: leader 1: follower
 
 	ROS_INFO("Please input (x,y). x>0,y>0");
 	cout<<"desired_X:";
 	cin>>leader_goal.x;
 	cout<<"desired_Y:";
 	cin>>leader_goal.y;	
-
 
 	// setting frequency as 10 Hz
   	ros::Rate loop_rate(10);
@@ -183,9 +185,9 @@ int main(int argc, char **argv)
 		/* -------------------
 		Finish you code here */
 
-    	Positioncontrol(follower1_goal, follower1, follower1_twist);
-    	Positioncontrol(follower2_goal, follower2, follower2_twist);
-		Positioncontrol(leader_goal, leader, leader_twist);
+    	Positioncontrol(follower1_goal, follower1, follower1_twist, role_flag = 1);
+    	Positioncontrol(follower2_goal, follower2, follower2_twist, role_flag = 1);
+		Positioncontrol(leader_goal, leader, leader_twist, role_flag = 0);
 
 		/* --------------------*/ 
 
