@@ -1,12 +1,7 @@
-"""
-Simulate a quadrotor following a 3D trajectory, reference : PythonRobotics/ Daniel Ingram
-"""
-from cmath import pi
-from math import cos, sin, acos, asin, atan
-from random import weibullvariate
+import time
+from math import cos, sin, acos
 import numpy as np
 from Quadrotor import Quadrotor
-from TrajectoryGenerator import TrajectoryGenerator
 from mpl_toolkits.mplot3d import Axes3D
 
 show_animation = True
@@ -14,19 +9,20 @@ show_animation = True
 # Simulation parameters
 g = 9.81
 
+Ixx = 1
+Iyy = 1
+Izz = 1
 J = np.eye(3)
 T = 5
 
 # Proportional coefficients
 # translation
-Kp_z = 12
+Kp_z = 10
 
 # rotation
-Kp_roll = 10
-Kp_pitch = 10
-Kp_yaw = 10
-
-
+Kp_yaw = -30
+Kp_roll = -50
+Kp_pitch = -50
 
 # Derivative coefficients
 # translation
@@ -34,20 +30,16 @@ Kp_yaw = 10
 Kd_z = 6
 
 # rotation
-Kd_yaw = 3
-Kd_roll = 3
-Kd_pitch = 3
+Kd_yaw = -10
+Kd_roll = -15
+Kd_pitch = -15
 
-def quad_sim(x_c, y_c, z_c):
-    """
-    Calculates the necessary total_thrust and torques for the quadrotor to
-    follow the trajectory described by the sets of coefficients
-    x_c, y_c, and z_c.
-    """
+def quad_sim():
+
     # initial condition
     x_pos = 0
     y_pos = 0
-    z_pos = 2
+    z_pos = 0
     
     x_vel = 0
     y_vel = 0
@@ -61,17 +53,14 @@ def quad_sim(x_c, y_c, z_c):
     pitch = 0
     yaw = 0
     
-    eul_angle = np.array([[0],[0],[0]])
-    angular_vel = np.array([[0],[0],[0]])
-    
-    # desire yaw angle
-    des_yaw = 0
+    eul_angle = np.array([[0],[0],[0]]); 
+    angular_vel = np.array([[0],[0] ,[0]])
 
     # desire angular velocity, we want the quadcopter to avoid rotating
     des_yaw_rate = 0
     des_roll_rate = 0
     des_pitch_rate = 0
-    
+
     # time initialize
     dt = 0.1
     t = 0
@@ -79,71 +68,91 @@ def quad_sim(x_c, y_c, z_c):
     # initialize the quadcopter with ic above
     q = Quadrotor(x=x_pos, y=y_pos, z=z_pos, roll=roll,
                   pitch=pitch, yaw=yaw, size=1, show_animation=show_animation)
+    
+    q.R = rotation_matrix(roll, pitch, yaw)
 
     # counts for trajectory
     i = 0
-    n_run = 6
+    n_run = 3
     irun = 0
+    start = time.time()
+    
+    # desire identity orientation
+    ''' Homework3 '''
+
+    des_R = np.eye(3)
 
     while True:
         
         while t <= T:
             
-            des_z_pos = calculate_position(z_c[i], t)
-            des_z_vel = calculate_velocity(z_c[i], t)
+        
+            des_z_pos = np.array([2])
+            des_z_vel = np.array([0])
+            des_z_acc = np.array([0])
             
-            des_x_acc = calculate_acceleration(x_c[i], t)
-            des_y_acc = calculate_acceleration(y_c[i], t)
-            des_z_acc = calculate_acceleration(z_c[i], t)
+            ''' Homework3 '''
             
-            roll_rate = angular_vel[0]
-            pitch_rate = angular_vel[1]
-            yaw_rate = angular_vel[2]
+            # get rel_R (rotation matrix from current orientation to desired orientation)
             
-            # Checkpoint5 :  Please define the desire roll and pitch angle (Hint: it depends on the acceleration of x, y )
-            coef_y = -1 if des_y_acc < 0 else 1
-            coef_x = -1 if des_x_acc < 0 else 1
+            rel_R = des_R.T @ q.R
 
-            des_roll = coef_y*acos(g/(np.sqrt(g**2 + des_y_acc**2)))
-            #des_roll = atan(des_y_acc/g)
-            des_pitch = coef_x*acos(g/(np.sqrt(g**2 + des_x_acc**2)))
-            #des_pitch = atan(des_x_acc/g)
+            # get the rotation axis , you can see this as eigen vector (with eigen value = 1)
             
-            # print(des_roll)
-            # print(des_pitch)
-            # input()
+            axis = 1/2*(rel_R - np.linalg.inv(rel_R))
+            axis = vee_map(axis)
 
-            # Checkpoint3 :   Please define the error term here !
             
-            # position error  (z)
+            # get the rotation angle of the rotation axis
+            angle_of_axis = acos((np.trace(rel_R) - 1) / 2)
+
+            # get the rotation error 
+
+            rotation_error = angle_of_axis * normalize(axis)
+
+            rotation_error = np.round(rotation_error, 3)
+
+            desire_w = np.array([des_roll_rate,des_pitch_rate,des_yaw_rate]).reshape(3,1)
+            ew = angular_vel - (q.R.T @ des_R) @ desire_w
+            
+
+            '''
+            ---------------Error definition------------------
+            '''
+            
+            # ------ For P control ------
+            
+            # position error 
             ex_z = des_z_pos - z_pos
 
             # angle error
-            er_roll = des_roll - roll
-            er_pitch = des_pitch - pitch
-            er_yaw = des_yaw - yaw
-                
-            # velocity error (z)
+            er_roll = rotation_error[0]
+            er_pitch = rotation_error[1]
+            er_yaw = rotation_error[2]
+    
+    
+            # ------ For D control ------
+            
+            # velocity error
             ev_z = des_z_vel - z_vel
 
             # angular velocity error
-            ew_roll = des_roll_rate - roll_rate
-            ew_pitch = des_pitch_rate - pitch_rate
-            ew_yaw = des_yaw_rate - yaw_rate
-
-            # Checkpoint4 :  Please design your controller here !    
+            ew_roll = ew[0]
+            ew_pitch = ew[1]
+            ew_yaw = ew[2]
+            
+            '''
+            ---------------Controller design------------------
+            '''
             
             # translation controller
-            total_thrust = (g + Kd_z * ev_z + Kp_z * ex_z) * q.m
+            total_thrust = q.m * (g + des_z_acc + Kp_z * ex_z + Kd_z * ev_z)
             
             # rotation controller
-            roll_torque = (Kd_roll * ew_roll + Kp_roll * er_roll) * q.Ixx
-            pitch_torque = (Kd_pitch * ew_pitch + Kp_pitch * er_pitch) * q.Iyy
-            yaw_torque =  (Kd_yaw * ew_yaw + Kp_yaw * er_yaw) * q.Izz
-            
-            # mix all torque into tau
+            roll_torque = (Kp_roll * er_roll + Kd_roll * ew_roll ) * q.Ixx
+            pitch_torque = (Kp_pitch * er_pitch + Kd_pitch * ew_pitch) * q.Iyy
+            yaw_torque = (Kp_yaw * er_yaw + Kd_yaw * ew_yaw) * q.Izz
             total_moment = np.array([ np.array([roll_torque]), np.array([pitch_torque]), yaw_torque], dtype=object)
-            
             
             # motor force allocation
             control_input = np.concatenate([np.array([total_thrust]),total_moment])
@@ -155,28 +164,31 @@ def quad_sim(x_c, y_c, z_c):
             
             # Get total_thrust and total_moment from motor 
             control_input_real = q.allocation_matrix @ motor_force
+            
             total_thrust_real = control_input_real[0]
             total_moment_real = control_input_real[1:]
             
+            
             # -------------- Rotation dynamics update --------------------
             # equation (2) in week4
-            
             angular_acc = (np.linalg.inv(J)) @ (total_moment_real - vec_cross(eul_angle, np.matmul(J,eul_angle)));
+            # add noise (ex: wind, external force....)
+            angular_acc = add_noise(angular_acc,0.01)
+
             angular_vel = angular_vel + angular_acc*dt
             eul_angle = eul_angle + angular_vel*dt
-            
-            roll = eul_angle[0]
+
+            roll = eul_angle[0]   
             pitch = eul_angle[1]
             yaw = eul_angle[2]
             
             # get the rotation matrix from roll, pitch, yaw angle
-            R = rotation_matrix(roll, pitch, yaw)
-            
+            q.R = rotation_matrix(roll, pitch, yaw)
+
             
             # ------------ Translation dynamics update ------------------
             # equation (1) in week4
-            acc = (np.matmul(R, np.array([0, 0, total_thrust_real.item()]).T) ) / q.m - np.array([0, 0,  g]).T
-
+            acc = (np.matmul(q.R, np.array([0, 0, total_thrust_real.item()]).T) ) / q.m - np.array([0, 0,  g]).T
             
             # acceleration update
             x_acc = acc[0]
@@ -202,9 +214,10 @@ def quad_sim(x_c, y_c, z_c):
         
         if irun >= n_run:
             break
+    end = time.time()
 
     print("Simulation Complete")
-
+    print(end - start,"s")
 
 def calculate_position(c, t):
 
@@ -245,24 +258,26 @@ def rotation_matrix(roll, pitch, yaw):
 def vec_cross(a,b):
     return np.array([[a[1]*b[2] - a[2]*b[2]], [-a[0]*b[2] + a[2]*b[0]], [a[0]*b[1] - a[1]*b[0]]]).reshape(3,1)
 
+
+def vee_map(R):
+    return np.array([R[2,1], R[0,2],R[1,0]])
+
+def trace(R):
+    return R[0,0]+R[1,1]+R[2,2]
+
+def add_noise(x,value):
+    x_noise = np.random.normal(0, value,x.shape)
+    return x + x_noise
+
+def normalize(v):
+    norm = np.linalg.norm(v)
+    if norm == 0: 
+       return v
+    return v / norm
+
 def main():
-    """
-    Calculates the x, y, z coefficients for the four segments 
-    of the trajectory
-    """
-    x_coeffs = [[], [], [], []]
-    y_coeffs = [[], [], [], []]
-    z_coeffs = [[], [], [], []]
-    waypoints = [[0, 0, 2], [2,3.46,2], [4,0,2]]
 
-    for i in range(3):
-        traj = TrajectoryGenerator(waypoints[i], waypoints[(i + 1) % 3], T)
-        traj.solve()
-        x_coeffs[i] = traj.x_c
-        y_coeffs[i] = traj.y_c
-        z_coeffs[i] = traj.z_c
-
-    quad_sim(x_coeffs, y_coeffs, z_coeffs)
+    quad_sim()
 
 
 if __name__ == "__main__":

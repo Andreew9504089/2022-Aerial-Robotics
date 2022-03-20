@@ -134,7 +134,7 @@ def quad_sim(x_c, y_c, z_c):
             
             
             # translation controller
-            total_thrust = (g + Kd_z * ev_z + Kp_z * ex_z)
+            total_thrust = (g + Kd_z * ev_z + Kp_z * ex_z) * q.m
             
             # rotation controller
             roll_torque = (Kd_roll * ew_roll + Kp_roll * er_roll) * Ixx

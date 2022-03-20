@@ -11,7 +11,10 @@ class Quadrotor():
     def __init__(self, x=0, y=0, z=0, roll=0, pitch=0, yaw=0, size=0.30, show_animation=True):
         
         self.m = 2.0
-        m = 0.5
+        
+        # rotation matrix
+        self.R = np.eye(3);
+        
         self.Ixx = 1
         self.Iyy = 1.2
         self.Izz = 1
@@ -28,16 +31,8 @@ class Quadrotor():
         self.y_data = []
         self.z_data = []
         
-        '''
-        Checkpoint1 :  Please define the allocation matrix here !
-        Hint: 1.  week4 slide p.39
-              2.  self.L1 = size/2 , self.L2 = size/2 , self.cf = 0.01
-        '''
-
-        self.allocation_matrix = np.array([[1, 1, 1, 1], 
-                                           [self.L1, -self.L1, -self.L1, self.L1],
-                                           [-self.L2, -self.L2, self.L2, self.L2],
-                                           [self.cf, -self.cf, self.cf, -self.cf]])
+        self.allocation_matrix = np.array([[1 ,1, 1, 1],[self.L1, -self.L1 ,-self.L1 ,self.L1],
+                                           [-self.L2 ,-self.L2 ,self.L2 ,self.L2], [self.cf, -self.cf, self.cf, -self.cf]])
         
         self.invallocation_matrix = np.linalg.inv(self.allocation_matrix)
         
@@ -69,25 +64,19 @@ class Quadrotor():
             self.plot()
     def transformation_matrix(self):
         
-        x = self.x  # x is related to roll
-        y = self.y  # y is related to pitch
-        z = self.z  # z is related to yaw
+        x = self.x
+        y = self.y
+        z = self.z
         roll = self.roll
         pitch = self.pitch
         yaw = self.yaw
-        '''
-        Checkpoint2 :   Please define the rotation matrix here :  Body frame -> Inertia frame
-        Hint : week4 slide p.43
-
-        '''
+        
         return np.array(
             [[cos(yaw) * cos(pitch), -sin(yaw) * cos(roll) + cos(yaw) * sin(pitch) * sin(roll), sin(yaw) * sin(roll) + cos(yaw) * sin(pitch) * cos(roll), x],
-             [sin(yaw) * cos(pitch), cos(yaw) * cos(roll) + sin(yaw) * sin(pitch)* sin(roll), -cos(yaw) * sin(roll) + sin(yaw) * sin(pitch) * sin(roll), y],
-             [-sin(pitch), cos(pitch) * sin(roll), cos(pitch) * cos(roll), z]])
-
-
-
-
+             [sin(yaw) * cos(pitch), cos(yaw) * cos(roll) + sin(yaw) * sin(pitch)
+              * sin(roll), -cos(yaw) * sin(roll) + sin(yaw) * sin(pitch) * cos(roll), y],
+             [-sin(pitch), cos(pitch) * sin(roll), cos(pitch) * cos(yaw), z]
+             ])
 
     def plot(self):  # pragma: no cover
         T = self.transformation_matrix()
