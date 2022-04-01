@@ -12,7 +12,7 @@ learning_rate = 0.01;
 q = [1 0 0 0]';
 trajectory = q;
 
-for i = 2:length(ax)
+for i = 1:length(ax)
 
     e = [2*-9.8*(q(2)*q(4) - q(1)*q(3)) - ax(i);
         2*-9.8*(q(1)*q(2) + q(3)*q(4)) - ay(i);
